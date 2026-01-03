@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "539198325744",
+    "project_id": "bupraa-a951e",
+    "storage_bucket": "bupraa-a951e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:539198325744:android:7ed34d07544cb94105d335",
+        "android_client_info": {
+          "package_name": "com.akdbt.bupra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8iuwXvJGXIilhbLAqIcX7TEstzH-Vngo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
