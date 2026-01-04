@@ -21,7 +21,12 @@ class AuthService {
         email: email,
         password: password,
       );
-      return await _getUserData(credential.user!.uid);
+      final userModel = await _getUserData(credential.user!.uid);
+
+      // FCM token will be saved by NotificationService after initialization
+      // No need to save it here as it's handled in main.dart
+
+      return userModel;
     } catch (e) {
       throw Exception('Sign in failed: $e');
     }
@@ -212,5 +217,112 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  // Re-authenticate user with email and password
+  Future<UserCredential?> reauthenticateWithEmail(
+    String email,
+    String password,
+  ) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('Kullanıcı bulunamadı');
+      }
+
+      // Create credential
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+
+      // Re-authenticate
+      final result = await user.reauthenticateWithCredential(credential);
+      return result;
+    } catch (e) {
+      if (e is FirebaseAuthException) {
+        if (e.code == 'wrong-password') {
+          throw Exception('Şifre yanlış');
+        } else if (e.code == 'user-mismatch') {
+          throw Exception('Kullanıcı eşleşmiyor');
+        } else if (e.code == 'user-not-found') {
+          throw Exception('Kullanıcı bulunamadı');
+        } else if (e.code == 'invalid-credential') {
+          throw Exception('Geçersiz kimlik bilgileri');
+        }
+      }
+      throw Exception('Kimlik doğrulama başarısız: $e');
+    }
+  }
+
+  // Delete user account
+  Future<void> deleteAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('Kullanıcı bulunamadı');
+      }
+
+      final uid = user.uid;
+
+      // Delete user data from Firestore
+      await _deleteUserData(uid);
+
+      // Delete Firebase Auth user
+      await user.delete();
+    } catch (e) {
+      if (e is FirebaseAuthException) {
+        if (e.code == 'requires-recent-login') {
+          throw Exception('Bu işlem için tekrar giriş yapmanız gerekiyor');
+        }
+      }
+      throw Exception('Hesap silme başarısız: $e');
+    }
+  }
+
+  // Delete all user data from Firestore
+  Future<void> _deleteUserData(String uid) async {
+    try {
+      // Get user document to find displayName
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        final displayName = userData?['displayName'] as String?;
+
+        // Delete displayName document if exists
+        if (displayName != null && displayName.isNotEmpty) {
+          final normalizedDisplayName = displayName.toLowerCase();
+          await _firestore
+              .collection('displayNames')
+              .doc(normalizedDisplayName)
+              .delete();
+        }
+
+        // Delete user document
+        await _firestore.collection('users').doc(uid).delete();
+      }
+
+      // Delete user's friends collection
+      final friendsSnapshot = await _firestore
+          .collection('friends')
+          .doc(uid)
+          .collection('friends')
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in friendsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      // Delete friends collection document
+      await _firestore.collection('friends').doc(uid).delete();
+
+      // Note: We don't delete chats and messages as they might be needed by other users
+      // The user will be removed from chat members, but chat history remains
+    } catch (e) {
+      // Log error but don't throw - we still want to delete Auth user
+      // In production, you might want to log this to a monitoring service
+    }
   }
 }

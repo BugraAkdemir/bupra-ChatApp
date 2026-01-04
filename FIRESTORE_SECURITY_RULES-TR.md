@@ -59,6 +59,12 @@ service cloud.firestore {
                        request.auth.uid == userId;
 
       allow delete: if false; // Client üzerinden kullanıcı silmeyi engelle
+
+      // Kullanıcı tercihleri alt collection'ı
+      match /preferences/{preferenceId} {
+        allow read, write: if request.auth != null &&
+                              request.auth.uid == userId;
+      }
     }
 
     // ============================================
@@ -69,6 +75,10 @@ service cloud.firestore {
         request.auth.uid in resource.data.members;
       allow create: if request.auth != null &&
         request.auth.uid in request.resource.data.members;
+      // deletedBy field'ını güncellemek için izin ver (üyeler için)
+      allow update: if request.auth != null &&
+        request.auth.uid in resource.data.members &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedBy']);
     }
 
     // ============================================
@@ -85,8 +95,58 @@ service cloud.firestore {
     // ARKADAŞLAR COLLECTION'I
     // ============================================
     match /friends/{userId}/friends/{friendId} {
-      allow read, write: if request.auth != null &&
+      allow read: if request.auth != null &&
         request.auth.uid == userId;
+
+      // Kullanıcılar kendi collection'larına arkadaş ekleyebilir
+      // Ayrıca istek kabul edildiğinde karşı tarafın collection'ına da ekleme izni (karşılıklı)
+      allow create: if request.auth != null &&
+                       (request.auth.uid == userId ||
+                        request.auth.uid == friendId);
+
+      allow update, delete: if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // ============================================
+    // ARKADAŞLIK İSTEKLERİ COLLECTION
+    // ============================================
+    match /friendRequests/{requestId} {
+      // Kullanıcılar istek oluşturabilir (gönderme)
+      allow create: if request.auth != null &&
+                       request.auth.uid == request.resource.data.senderId &&
+                       request.resource.data.receiverId is string &&
+                       request.resource.data.status == 'pending';
+
+      // Kullanıcılar kendi gelen veya giden isteklerini okuyabilir
+      // Not: Query'ler için resource.data mevcut olmayabilir, bu yüzden her ikisini de kontrol ediyoruz
+      allow read: if request.auth != null &&
+                     (!resource.exists ||
+                      resource.data.senderId == request.auth.uid ||
+                      resource.data.receiverId == request.auth.uid);
+
+      // Alıcılar status'u güncelleyebilir (kabul/reddet)
+      // Ayrıca senderDisplayName ve senderPhotoUrl güncellemesine izin ver (görüntüleme amaçlı)
+      allow update: if request.auth != null &&
+                       resource.data.receiverId == request.auth.uid &&
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) ||
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'senderDisplayName', 'senderPhotoUrl']));
+
+      // Gönderenler kendi pending isteklerini silebilir (iptal)
+      allow delete: if request.auth != null &&
+                       resource.data.senderId == request.auth.uid &&
+                       resource.data.status == 'pending';
+    }
+
+    // ============================================
+    // BİLDİRİMLER COLLECTION
+    // ============================================
+    // Bu collection push notification kuyruğu için kullanılır
+    // Sadece authenticated kullanıcılar bildirim oluşturabilir
+    // Cloud Functions bunları işleyip silecek
+    match /notifications/{notificationId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false; // Sadece Cloud Functions değiştirebilir
     }
   }
 }

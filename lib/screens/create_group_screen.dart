@@ -4,6 +4,7 @@ import '../services/firestore_service.dart';
 import '../models/user_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/custom_snackbar.dart';
 import 'chat_screen.dart';
 
 class CreateGroupScreen extends StatefulWidget {
@@ -28,30 +29,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   Future<void> _createGroup() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Lütfen grup adı girin'),
-          backgroundColor: AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      CustomSnackBar.showError(context, 'Lütfen grup adı girin');
       return;
     }
 
     if (_selectedFriends.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Lütfen en az bir arkadaş seçin'),
-          backgroundColor: AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      CustomSnackBar.showError(context, 'Lütfen en az bir arkadaş seçin');
       return;
     }
 
@@ -71,18 +54,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Grup oluşturulamadı: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
+      // Silently handle errors
     }
   }
 

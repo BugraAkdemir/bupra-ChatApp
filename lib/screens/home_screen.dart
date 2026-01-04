@@ -4,6 +4,7 @@ import '../services/firestore_service.dart';
 import '../models/chat_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/custom_snackbar.dart';
 import 'chat_screen.dart';
 import 'create_group_screen.dart';
 
@@ -36,16 +37,7 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.search_rounded),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Arama yakında eklenecek'),
-                  backgroundColor: AppTheme.surfaceColor,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
+              CustomSnackBar.showInfo(context, 'Arama yakında eklenecek');
             },
           ),
         ],
@@ -62,19 +54,32 @@ class HomeScreen extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
+            // Don't show error, show empty state instead
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: AppTheme.errorColor,
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 40,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Hata: ${snapshot.error}',
-                    style: const TextStyle(color: AppTheme.textSecondary),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Henüz sohbet yok',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -195,6 +200,9 @@ class _ChatListItem extends StatelessWidget {
               ),
             );
           },
+          onLongPress: () {
+            _ChatListItem._showDeleteDialog(context, chat.chatId, currentUserId);
+          },
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
@@ -280,5 +288,50 @@ class _ChatListItem extends StatelessWidget {
     } else {
       return '${dateTime.day}/${dateTime.month}';
     }
+  }
+
+  static void _showDeleteDialog(BuildContext context, String chatId, String userId) {
+    final firestoreService = FirestoreService();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: const Text(
+          'Sohbeti Sil',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: const Text(
+          'Bu sohbeti silmek istediğinize emin misiniz? Sohbet karşı tarafta görünmeye devam edecektir.',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'İptal',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await firestoreService.deleteChat(chatId, userId);
+                if (context.mounted) {
+                  CustomSnackBar.showSuccess(context, 'Sohbet silindi');
+                }
+              } catch (e) {
+                // Silently handle errors
+              }
+            },
+            child: const Text(
+              'Sil',
+              style: TextStyle(color: AppTheme.errorColor),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

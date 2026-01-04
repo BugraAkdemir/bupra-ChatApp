@@ -7,6 +7,7 @@ class ChatModel {
   final List<String> members;
   final String? lastMessage;
   final DateTime updatedAt;
+  final List<String> deletedBy; // UIDs of users who deleted this chat
 
   ChatModel({
     required this.chatId,
@@ -15,6 +16,7 @@ class ChatModel {
     required this.members,
     this.lastMessage,
     required this.updatedAt,
+    this.deletedBy = const [],
   });
 
   factory ChatModel.fromMap(Map<String, dynamic> map, String chatId) {
@@ -25,6 +27,7 @@ class ChatModel {
       members: List<String>.from(map['members'] ?? []),
       lastMessage: map['lastMessage'],
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
+      deletedBy: List<String>.from(map['deletedBy'] ?? []),
     );
   }
 

@@ -1,38 +1,50 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Premium Dark Theme Colors
-  static const Color primaryColor = Color(0xFF7C3AED); // Violet
-  static const Color backgroundColor = Color(0xFF0F0F14); // Deep dark
-  static const Color surfaceColor = Color(0xFF161622); // Dark surface
-  static const Color accentColor = Color(0xFFA78BFA); // Light violet
-  static const Color textPrimary = Color(0xFFFFFFFF); // White
-  static const Color textSecondary = Color(0xFFA1A1AA); // Gray
-  static const Color errorColor = Color(0xFFEF4444);
-  static const Color successColor = Color(0xFF10B981);
-
-  // Chat specific colors
-  static const Color sentMessageColor = primaryColor;
-  static const Color receivedMessageColor = Color(0xFF1F1F2E);
-  static const Color chatBackgroundColor = Color(0xFF0A0A0F);
-  static const Color dividerColor = Color(0xFF27272A);
-
-  static ThemeData get darkTheme {
+  // Helper method to create theme
+  static ThemeData _createTheme({
+    required Color primaryColor,
+    required Color backgroundColor,
+    required Color surfaceColor,
+    required Color accentColor,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color errorColor,
+    required Color successColor,
+    required Color warningColor,
+    required Color receivedMessageColor,
+    required Color dividerColor,
+    required Color inputBackgroundColor,
+    required Brightness brightness,
+  }) {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.dark(
-        primary: primaryColor,
-        secondary: accentColor,
-        surface: surfaceColor,
-        background: backgroundColor,
-        error: errorColor,
-        onPrimary: textPrimary,
-        onSecondary: textPrimary,
-        onSurface: textPrimary,
-        onBackground: textPrimary,
-        onError: textPrimary,
-      ),
+      brightness: brightness,
+      colorScheme: brightness == Brightness.dark
+          ? ColorScheme.dark(
+              primary: primaryColor,
+              secondary: accentColor,
+              surface: surfaceColor,
+              background: backgroundColor,
+              error: errorColor,
+              onPrimary: textPrimary,
+              onSecondary: textPrimary,
+              onSurface: textPrimary,
+              onBackground: textPrimary,
+              onError: textPrimary,
+            )
+          : ColorScheme.light(
+              primary: primaryColor,
+              secondary: accentColor,
+              surface: surfaceColor,
+              background: backgroundColor,
+              error: errorColor,
+              onPrimary: textPrimary,
+              onSecondary: textPrimary,
+              onSurface: textPrimary,
+              onBackground: textPrimary,
+              onError: textPrimary,
+            ),
       scaffoldBackgroundColor: backgroundColor,
       appBarTheme: AppBarTheme(
         backgroundColor: surfaceColor,
@@ -40,8 +52,8 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         surfaceTintColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: textPrimary),
-        titleTextStyle: const TextStyle(
+        iconTheme: IconThemeData(color: textPrimary),
+        titleTextStyle: TextStyle(
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w600,
@@ -57,7 +69,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceColor,
+        fillColor: inputBackgroundColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -68,15 +80,15 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primaryColor, width: 2),
+          borderSide: BorderSide(color: primaryColor, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: errorColor, width: 1),
+          borderSide: BorderSide(color: errorColor, width: 1),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        hintStyle: const TextStyle(color: textSecondary),
-        labelStyle: const TextStyle(color: textSecondary),
+        hintStyle: TextStyle(color: textSecondary),
+        labelStyle: TextStyle(color: textSecondary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -117,21 +129,6 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
         ),
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: surfaceColor,
-        selectedItemColor: primaryColor,
-        unselectedItemColor: textSecondary,
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-        selectedLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-        ),
-      ),
       dividerTheme: DividerThemeData(
         color: dividerColor,
         thickness: 1,
@@ -143,7 +140,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      textTheme: const TextTheme(
+      textTheme: TextTheme(
         displayLarge: TextStyle(color: textPrimary, fontSize: 32, fontWeight: FontWeight.bold),
         displayMedium: TextStyle(color: textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
         displaySmall: TextStyle(color: textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
@@ -162,4 +159,172 @@ class AppTheme {
       ),
     );
   }
+
+  // Dark Theme (Default Purple)
+  static ThemeData get darkTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFF8B5CF6),
+      backgroundColor: const Color(0xFF1A1B23),
+      surfaceColor: const Color(0xFF252631),
+      accentColor: const Color(0xFFA78BFA),
+      textPrimary: const Color(0xFFFFFFFF),
+      textSecondary: const Color(0xFFB4B4C7),
+      errorColor: const Color(0xFFF87171),
+      successColor: const Color(0xFF34D399),
+      warningColor: const Color(0xFFFBBF24),
+      receivedMessageColor: const Color(0xFF2D2E3A),
+      dividerColor: const Color(0xFF3A3B47),
+      inputBackgroundColor: const Color(0xFF2A2B36),
+      brightness: Brightness.dark,
+    );
+  }
+
+  // Light Theme
+  static ThemeData get lightTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFF8B5CF6),
+      backgroundColor: const Color(0xFFF5F5F5),
+      surfaceColor: const Color(0xFFFFFFFF),
+      accentColor: const Color(0xFFA78BFA),
+      textPrimary: const Color(0xFF1A1B23),
+      textSecondary: const Color(0xFF6B7280),
+      errorColor: const Color(0xFFEF4444),
+      successColor: const Color(0xFF10B981),
+      warningColor: const Color(0xFFF59E0B),
+      receivedMessageColor: const Color(0xFFE5E7EB),
+      dividerColor: const Color(0xFFD1D5DB),
+      inputBackgroundColor: const Color(0xFFFFFFFF),
+      brightness: Brightness.light,
+    );
+  }
+
+  // Blue Theme
+  static ThemeData get blueTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFF3B82F6),
+      backgroundColor: const Color(0xFF1A1B23),
+      surfaceColor: const Color(0xFF252631),
+      accentColor: const Color(0xFF60A5FA),
+      textPrimary: const Color(0xFFFFFFFF),
+      textSecondary: const Color(0xFFB4B4C7),
+      errorColor: const Color(0xFFF87171),
+      successColor: const Color(0xFF34D399),
+      warningColor: const Color(0xFFFBBF24),
+      receivedMessageColor: const Color(0xFF2D2E3A),
+      dividerColor: const Color(0xFF3A3B47),
+      inputBackgroundColor: const Color(0xFF2A2B36),
+      brightness: Brightness.dark,
+    );
+  }
+
+  // Pink Theme
+  static ThemeData get pinkTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFFEC4899),
+      backgroundColor: const Color(0xFF1A1B23),
+      surfaceColor: const Color(0xFF252631),
+      accentColor: const Color(0xFFF472B6),
+      textPrimary: const Color(0xFFFFFFFF),
+      textSecondary: const Color(0xFFB4B4C7),
+      errorColor: const Color(0xFFF87171),
+      successColor: const Color(0xFF34D399),
+      warningColor: const Color(0xFFFBBF24),
+      receivedMessageColor: const Color(0xFF2D2E3A),
+      dividerColor: const Color(0xFF3A3B47),
+      inputBackgroundColor: const Color(0xFF2A2B36),
+      brightness: Brightness.dark,
+    );
+  }
+
+  // Red Theme
+  static ThemeData get redTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFFEF4444),
+      backgroundColor: const Color(0xFF1A1B23),
+      surfaceColor: const Color(0xFF252631),
+      accentColor: const Color(0xFFF87171),
+      textPrimary: const Color(0xFFFFFFFF),
+      textSecondary: const Color(0xFFB4B4C7),
+      errorColor: const Color(0xFFF87171),
+      successColor: const Color(0xFF34D399),
+      warningColor: const Color(0xFFFBBF24),
+      receivedMessageColor: const Color(0xFF2D2E3A),
+      dividerColor: const Color(0xFF3A3B47),
+      inputBackgroundColor: const Color(0xFF2A2B36),
+      brightness: Brightness.dark,
+    );
+  }
+
+  // Green Theme
+  static ThemeData get greenTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFF10B981),
+      backgroundColor: const Color(0xFF1A1B23),
+      surfaceColor: const Color(0xFF252631),
+      accentColor: const Color(0xFF34D399),
+      textPrimary: const Color(0xFFFFFFFF),
+      textSecondary: const Color(0xFFB4B4C7),
+      errorColor: const Color(0xFFF87171),
+      successColor: const Color(0xFF34D399),
+      warningColor: const Color(0xFFFBBF24),
+      receivedMessageColor: const Color(0xFF2D2E3A),
+      dividerColor: const Color(0xFF3A3B47),
+      inputBackgroundColor: const Color(0xFF2A2B36),
+      brightness: Brightness.dark,
+    );
+  }
+
+  // Yellow Theme
+  static ThemeData get yellowTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFFFBBF24),
+      backgroundColor: const Color(0xFF1A1B23),
+      surfaceColor: const Color(0xFF252631),
+      accentColor: const Color(0xFFFCD34D),
+      textPrimary: const Color(0xFFFFFFFF),
+      textSecondary: const Color(0xFFB4B4C7),
+      errorColor: const Color(0xFFF87171),
+      successColor: const Color(0xFF34D399),
+      warningColor: const Color(0xFFFBBF24),
+      receivedMessageColor: const Color(0xFF2D2E3A),
+      dividerColor: const Color(0xFF3A3B47),
+      inputBackgroundColor: const Color(0xFF2A2B36),
+      brightness: Brightness.dark,
+    );
+  }
+
+  // Gray Theme
+  static ThemeData get grayTheme {
+    return _createTheme(
+      primaryColor: const Color(0xFF6B7280),
+      backgroundColor: const Color(0xFF1A1B23),
+      surfaceColor: const Color(0xFF252631),
+      accentColor: const Color(0xFF9CA3AF),
+      textPrimary: const Color(0xFFFFFFFF),
+      textSecondary: const Color(0xFFB4B4C7),
+      errorColor: const Color(0xFFF87171),
+      successColor: const Color(0xFF34D399),
+      warningColor: const Color(0xFFFBBF24),
+      receivedMessageColor: const Color(0xFF2D2E3A),
+      dividerColor: const Color(0xFF3A3B47),
+      inputBackgroundColor: const Color(0xFF2A2B36),
+      brightness: Brightness.dark,
+    );
+  }
+
+  // Static color constants for backward compatibility (const for use in const widgets)
+  static const Color primaryColor = Color(0xFF8B5CF6);
+  static const Color backgroundColor = Color(0xFF1A1B23);
+  static const Color surfaceColor = Color(0xFF252631);
+  static const Color accentColor = Color(0xFFA78BFA);
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFB4B4C7);
+  static const Color errorColor = Color(0xFFF87171);
+  static const Color successColor = Color(0xFF34D399);
+  static const Color warningColor = Color(0xFFFBBF24);
+  static const Color sentMessageColor = Color(0xFF8B5CF6);
+  static const Color receivedMessageColor = Color(0xFF2D2E3A);
+  static const Color chatBackgroundColor = Color(0xFF1E1F2A);
+  static const Color dividerColor = Color(0xFF3A3B47);
+  static const Color inputBackgroundColor = Color(0xFF2A2B36);
 }

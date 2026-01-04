@@ -59,6 +59,12 @@ service cloud.firestore {
                        request.auth.uid == userId;
 
       allow delete: if false; // Prevent user deletion via client
+
+      // User preferences subcollection
+      match /preferences/{preferenceId} {
+        allow read, write: if request.auth != null &&
+                              request.auth.uid == userId;
+      }
     }
 
     // ============================================
@@ -69,6 +75,10 @@ service cloud.firestore {
         request.auth.uid in resource.data.members;
       allow create: if request.auth != null &&
         request.auth.uid in request.resource.data.members;
+      // Allow updating deletedBy field for members
+      allow update: if request.auth != null &&
+        request.auth.uid in resource.data.members &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedBy']);
     }
 
     // ============================================
@@ -85,8 +95,58 @@ service cloud.firestore {
     // FRIENDS COLLECTION
     // ============================================
     match /friends/{userId}/friends/{friendId} {
-      allow read, write: if request.auth != null &&
+      allow read: if request.auth != null &&
         request.auth.uid == userId;
+
+      // Users can add friends to their own collection
+      // Also allow adding to friend's collection when accepting a request (bidirectional)
+      allow create: if request.auth != null &&
+                       (request.auth.uid == userId ||
+                        request.auth.uid == friendId);
+
+      allow update, delete: if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // ============================================
+    // FRIEND REQUESTS COLLECTION
+    // ============================================
+    match /friendRequests/{requestId} {
+      // Users can create requests (send)
+      allow create: if request.auth != null &&
+                       request.auth.uid == request.resource.data.senderId &&
+                       request.resource.data.receiverId is string &&
+                       request.resource.data.status == 'pending';
+
+      // Users can read their own incoming or outgoing requests
+      // Note: resource.data might not exist for queries, so we check both
+      allow read: if request.auth != null &&
+                     (!resource.exists ||
+                      resource.data.senderId == request.auth.uid ||
+                      resource.data.receiverId == request.auth.uid);
+
+      // Receivers can update status (accept/reject)
+      // Also allow updating senderDisplayName and senderPhotoUrl (for display purposes)
+      allow update: if request.auth != null &&
+                       resource.data.receiverId == request.auth.uid &&
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) ||
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'senderDisplayName', 'senderPhotoUrl']));
+
+      // Senders can delete their own pending requests (cancel)
+      allow delete: if request.auth != null &&
+                       resource.data.senderId == request.auth.uid &&
+                       resource.data.status == 'pending';
+    }
+
+    // ============================================
+    // NOTIFICATIONS COLLECTION
+    // ============================================
+    // This collection is used for push notification queue
+    // Only authenticated users can create notifications
+    // Cloud Functions will process and delete them
+    match /notifications/{notificationId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false; // Only Cloud Functions can modify
     }
   }
 }

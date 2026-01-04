@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/app_logo.dart';
 import 'login_screen.dart';
+import 'edit_profile_screen.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -33,18 +35,23 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Profil'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_rounded),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Profil düzenleme yakında eklenecek'),
-                  backgroundColor: AppTheme.surfaceColor,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+          StreamBuilder<UserModel?>(
+            stream: firestoreService.getUserStream(currentUserId),
+            builder: (context, snapshot) {
+              final user = snapshot.data;
+              if (user == null) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                icon: const Icon(Icons.edit_rounded),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditProfileScreen(user: user),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -128,68 +135,24 @@ class ProfileScreen extends StatelessWidget {
                   title: 'Bilgilerim',
                   subtitle: 'Kullanıcı adı ve email',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Yakında eklenecek'),
-                        backgroundColor: AppTheme.surfaceColor,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EditProfileScreen(user: user),
                       ),
                     );
                   },
                 ),
                 _buildMenuItem(
                   context,
-                  icon: Icons.lock_outline_rounded,
-                  title: 'Gizlilik',
-                  subtitle: 'Hesap ayarları',
+                  icon: Icons.settings_outlined,
+                  title: 'Ayarlar',
+                  subtitle: 'Uygulama ayarları',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Yakında eklenecek'),
-                        backgroundColor: AppTheme.surfaceColor,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.notifications_outlined,
-                  title: 'Bildirimler',
-                  subtitle: 'Bildirim ayarları',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Yakında eklenecek'),
-                        backgroundColor: AppTheme.surfaceColor,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.help_outline_rounded,
-                  title: 'Yardım',
-                  subtitle: 'SSS ve destek',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Yakında eklenecek'),
-                        backgroundColor: AppTheme.surfaceColor,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SettingsScreen(),
                       ),
                     );
                   },

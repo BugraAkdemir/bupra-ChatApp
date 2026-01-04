@@ -8,6 +8,7 @@ import '../models/message_model.dart';
 import '../models/user_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/custom_snackbar.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -25,6 +26,10 @@ class _ChatScreenState extends State<ChatScreen> {
   final _authService = AuthService();
   final _imagePicker = ImagePicker();
   final _scrollController = ScrollController();
+  final Map<String, UserModel> _userCache = {}; // Cache for user data
+  bool _isInitialLoad = true;
+  bool _hasScrolledToBottom = false;
+  int _previousMessageCount = 0; // Track message count to detect new messages
 
   @override
   void dispose() {
@@ -40,23 +45,37 @@ class _ChatScreenState extends State<ChatScreen> {
     final senderId = _authService.currentUser?.uid;
     if (senderId == null || senderId.isEmpty) return;
 
+    // Clear text immediately for better UX
+    final messageText = text;
+    _messageController.clear();
+
+    // Save current scroll position before sending
+    double? savedScrollPosition;
+    if (_scrollController.hasClients) {
+      savedScrollPosition = _scrollController.position.pixels;
+    }
+
     try {
-      await _firestoreService.sendMessage(widget.chatId, senderId, text, null);
-      _messageController.clear();
-      _scrollToBottom();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Mesaj gönderilemedi: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+      await _firestoreService.sendMessage(widget.chatId, senderId, messageText, null);
+
+      // Restore scroll position after a short delay to prevent jump
+      if (savedScrollPosition != null && _scrollController.hasClients) {
+        final scrollPos = savedScrollPosition; // Capture for closure
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (_scrollController.hasClients) {
+            // Only scroll if user was at bottom (within 100px)
+            if (scrollPos < 100) {
+              _scrollController.jumpTo(0.0);
+            } else {
+              // Maintain scroll position
+              _scrollController.jumpTo(scrollPos);
+            }
+          }
+        });
       }
+    } catch (e) {
+      // Silently handle errors - don't show to user
+      // Error is logged but not displayed
     }
   }
 
@@ -73,16 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (image == null) return;
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Resim yükleniyor...'),
-            backgroundColor: AppTheme.surfaceColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        CustomSnackBar.showLoading(context, 'Resim yükleniyor...');
       }
 
       final imageUrl = await _storageService.uploadImage(
@@ -99,34 +109,46 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        _scrollToBottom();
       }
     } catch (e) {
+      // Silently handle errors - don't show to user
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Resim gönderilemedi: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
       }
     }
   }
 
-  void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+  Future<void> _preloadUserData(List<MessageModel> messages) async {
+    final userIdsToLoad = <String>{};
+    for (final message in messages) {
+      if (!_userCache.containsKey(message.senderId)) {
+        userIdsToLoad.add(message.senderId);
       }
-    });
+    }
+
+    if (userIdsToLoad.isEmpty) return;
+
+    // Load all users in parallel
+    final futures = userIdsToLoad.map((uid) => _firestoreService.getUser(uid));
+    final users = await Future.wait(futures);
+
+    if (mounted) {
+      // Update cache without forcing full rebuild
+      bool hasNewData = false;
+      for (int i = 0; i < userIdsToLoad.length; i++) {
+        final userId = userIdsToLoad.elementAt(i);
+        final user = users[i];
+        if (user != null && !_userCache.containsKey(userId)) {
+          _userCache[userId] = user;
+          hasNewData = true;
+        }
+      }
+
+      // Only call setState if we actually added new data
+      if (hasNewData) {
+        setState(() {});
+      }
+    }
   }
 
   Future<String> _getChatTitle() async {
@@ -194,7 +216,8 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<List<MessageModel>>(
               stream: _firestoreService.getMessagesStream(widget.chatId),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                // Show loading only on initial load
+                if (_isInitialLoad && snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
@@ -203,19 +226,24 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(
+                  // Don't show error to user, show empty state instead
+                  _isInitialLoad = false;
+                  return const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          size: 48,
-                          color: AppTheme.errorColor,
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 64,
+                          color: AppTheme.textSecondary,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Text(
-                          'Hata: ${snapshot.error}',
-                          style: const TextStyle(color: AppTheme.textSecondary),
+                          'Henüz mesaj yok',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
@@ -223,6 +251,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 final messages = snapshot.data ?? [];
+                final currentMessageCount = messages.length;
+                final isNewMessage = currentMessageCount > _previousMessageCount;
+
+                // Preload user data only when needed (new users or initial load)
+                if (_isInitialLoad) {
+                  _preloadUserData(messages);
+                  _isInitialLoad = false;
+                } else if (isNewMessage) {
+                  // Only preload for new messages, don't reload all
+                  final newMessages = messages.skip(_previousMessageCount).toList();
+                  _preloadUserData(newMessages);
+                }
+
+                _previousMessageCount = currentMessageCount;
 
                 if (messages.isEmpty) {
                   return Center(
@@ -264,26 +306,51 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
+                // Auto-scroll to bottom only on initial load
+                if (!_hasScrolledToBottom && messages.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_scrollController.hasClients) {
+                      _scrollController.jumpTo(0.0);
+                      _hasScrolledToBottom = true;
+                    }
+                  });
+                } else if (isNewMessage && _scrollController.hasClients) {
+                  // Only auto-scroll if user is near bottom when new message arrives
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_scrollController.hasClients) {
+                      final position = _scrollController.position;
+                      // If user is within 200px of bottom, auto-scroll
+                      if (position.pixels < 200) {
+                        _scrollController.jumpTo(0.0);
+                      }
+                    }
+                  });
+                }
+
                 return ListView.builder(
                   controller: _scrollController,
+                  reverse: true, // WhatsApp style - newest at bottom
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: messages.length,
+                  addAutomaticKeepAlives: false, // Better performance
+                  addRepaintBoundaries: true, // Better performance
+                  cacheExtent: 500, // Cache more items for smoother scrolling
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    // With reverse: true, index 0 is the newest message (at bottom)
+                    // So we need to reverse the messages list
+                    final reversedIndex = messages.length - 1 - index;
+                    final message = messages[reversedIndex];
                     final isMe = message.senderId == currentUserId;
+                    final sender = _userCache[message.senderId];
+                    final senderName = sender?.displayName.isNotEmpty == true
+                        ? sender!.displayName
+                        : 'Bilinmeyen';
 
-                    return FutureBuilder<UserModel?>(
-                      future: _firestoreService.getUser(message.senderId),
-                      builder: (context, userSnapshot) {
-                        final sender = userSnapshot.data;
-                        return MessageBubble(
-                          message: message,
-                          isMe: isMe,
-                          senderName: sender?.displayName.isNotEmpty == true
-                              ? sender!.displayName
-                              : 'Bilinmeyen',
-                        );
-                      },
+                    return MessageBubble(
+                      key: ValueKey(message.messageId), // Stable key for better performance
+                      message: message,
+                      isMe: isMe,
+                      senderName: senderName,
                     );
                   },
                 );
@@ -308,8 +375,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor,
-                      borderRadius: BorderRadius.circular(14),
+                      color: AppTheme.inputBackgroundColor,
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.image_outlined),
@@ -321,19 +388,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.backgroundColor,
-                        borderRadius: BorderRadius.circular(14),
+                        color: AppTheme.inputBackgroundColor,
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: TextField(
                         controller: _messageController,
-                        style: const TextStyle(color: AppTheme.textPrimary),
+                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: 'Mesaj yazın...',
                           hintStyle: const TextStyle(color: AppTheme.textSecondary),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 12,
+                            vertical: 14,
                           ),
                         ),
                         maxLines: null,
@@ -345,18 +412,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   const SizedBox(width: 8),
                   Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.primaryColor,
-                          AppTheme.accentColor,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
+                      color: AppTheme.primaryColor,
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),

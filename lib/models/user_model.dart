@@ -4,6 +4,7 @@ class UserModel {
   final String displayName; // Full display name (username#number)
   final String email;
   final String? photoUrl;
+  final String? fcmToken; // Firebase Cloud Messaging token
 
   UserModel({
     required this.uid,
@@ -11,6 +12,7 @@ class UserModel {
     required this.displayName,
     required this.email,
     this.photoUrl,
+    this.fcmToken,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
@@ -22,6 +24,7 @@ class UserModel {
       displayName: displayName,
       email: map['email'] ?? '',
       photoUrl: map['photoUrl'],
+      fcmToken: map['fcmToken'],
     );
   }
 
@@ -31,6 +34,7 @@ class UserModel {
       'displayName': displayName,
       'email': email,
       if (photoUrl != null) 'photoUrl': photoUrl,
+      if (fcmToken != null) 'fcmToken': fcmToken,
     };
   }
 }
